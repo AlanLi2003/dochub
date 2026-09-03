@@ -1,6 +1,6 @@
 """DocHub 应用入口
 运行方式：python3 app.py
-生产环境请使用 wsgi.py（gunicorn/uwsgi），勿用本开发服务器。
+生产环境请使用 gunicorn（工厂模式）：gunicorn -w 4 -b 0.0.0.0:8000 'app:create_app()'
 """
 import os
 from app import create_app
