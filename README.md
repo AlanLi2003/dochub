@@ -19,34 +19,52 @@ DocHub 是一个收录各大官网官方产品使用说明文档的聚合阅读�
 
 ```
 dochub-app/
-├── app.py                    # 应用入口
+├── .gitignore                # Git 忽略规则（数据库/上传/缓存不入库）
+├── app.py                    # 应用入口（开发服务器）
 ├── config.py                 # 配置类
 ├── requirements.txt          # 依赖清单
 ├── README.md                 # 项目说明
-├── instance/
-│   └── dochub.db             # SQLite 数据库（运行时自动创建）
+├── instance/                 # SQLite 数据库目录（运行时自动创建，不入库）
+│   └── dochub.db
 └── app/
-    ├── __init__.py           # app 工厂函数
-    ├── models.py             # 12 个数据库模型
+    ├── __init__.py           # app 工厂函数（create_app）
     ├── extensions.py         # Flask 扩展实例
-    ├── seed.py               # 种子数据初始化脚本
+    ├── models.py             # 12 个数据库模型
+    ├── seed.py               # 种子数据初始化脚本（python3 app/seed.py）
+    ├── search.py             # 检索：FTS5 全文索引 + jieba 分词、搜索聚合、联想
+    ├── security.py           # 认证安全：CSRF/CSP、登录限流与指数退避
+    ├── pdf_export.py         # PDF 导出（reportlab）
+    ├── blueprints/
+    │   ├── __init__.py
+    │   ├── main.py           # 主蓝图（首页/搜索/文档/社区/贡献/管理审核）
+    │   ├── auth.py           # 认证蓝图（注册/登录/登出）
+    │   └── api.py            # API 蓝图（搜索联想/分类/收藏/阅读进度）
     ├── templates/
     │   ├── base.html         # 通用布局
-    │   ├── index.html        # 首页占位
+    │   ├── index.html        # 首页
+    │   ├── search.html       # 搜索结果页
+    │   ├── categories.html   # 分类页
+    │   ├── doc.html          # 文档阅读页
+    │   ├── community.html    # 社区
+    │   ├── create_post.html  # 发帖
+    │   ├── post_detail.html  # 帖子详情
+    │   ├── contribute.html   # 贡献入口
+    │   ├── profile.html      # 个人中心
     │   ├── auth/
     │   │   ├── login.html
     │   │   └── register.html
+    │   ├── admin/
+    │   │   └── review.html   # 管理审核后台
     │   └── errors/
     │       ├── 404.html
     │       └── 500.html
-    ├── static/
-    │   ├── css/main.css      # 全局样式
-    │   ├── js/main.js        # 全局 JS
-    │   └── uploads/          # 用户上传目录
-    └── blueprints/
-        ├── main.py           # 主蓝图（首页）
-        ├── auth.py           # 认证蓝图（注册/登录/登出）
-        └── api.py            # API 蓝图（搜索联想/分类列表）
+    └── static/
+        ├── css/
+        │   ├── main.css
+        │   └── style.css     # 全局样式
+        ├── js/
+        │   └── main.js       # 全局 JS
+        └── uploads/          # 用户上传目录（运行时，不入库）
 ```
 
 ## 快速开始
@@ -66,7 +84,7 @@ pip3 install -r requirements.txt
 ### 2. 初始化数据库和种子数据
 
 ```bash
-python3 seed.py
+python3 app/seed.py
 ```
 
 种子数据包含：
@@ -118,7 +136,7 @@ python3 app.py
 - 应用使用工厂模式 `create_app()`，扩展在 `extensions.py` 中实例化
 - 蓝图按功能模块划分：main（首页）、auth（认证）、api（接口）
 - 密码使用 `werkzeug.security` 的 `generate_password_hash` / `check_password_hash`
-- 首次启动自动创建数据库表，运行 `seed.py` 初始化种子数据
+- 首次启动自动创建数据库表，运行 `python3 app/seed.py` 初始化种子数据
 - 生产环境请修改 `config.py` 中的 `SECRET_KEY`
 
 ## 许可证
