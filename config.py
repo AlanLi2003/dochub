@@ -4,6 +4,35 @@ import os
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
+def load_env_file(path=None):
+    """极简 .env 加载器（不引入 python-dotenv 依赖）。
+
+    仅填充当前进程尚未设置的变量（真实环境变量优先），支持 # 注释与 export 前缀。
+    .env 已被 .gitignore 忽略，适合在服务器上注入 SECRET_KEY 等生产密钥。"""
+    env_path = path or os.path.join(BASE_DIR, '.env')
+    if not os.path.exists(env_path):
+        return
+    try:
+        with open(env_path, encoding='utf-8') as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                if line.startswith('export '):
+                    line = line[len('export '):].strip()
+                key, _, value = line.partition('=')
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except OSError:
+        # .env 读取失败不应阻断启动（真实环境变量仍可生效）
+        pass
+
+
+load_env_file()
+
+
 class Config:
     """基础配置"""
     # 安全密钥：生产环境必须通过 SECRET_KEY 环境变量设置，否则使用开发回退值
@@ -19,12 +48,13 @@ class Config:
     # 文件上传配置
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'app', 'static', 'uploads')
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB
-    ALLOWED_EXTENSIONS = {'pdf', 'docx', 'md', 'txt', 'png', 'jpg', 'jpeg', 'svg'}
+    # 注意：刻意不包含 svg——SVG 可内嵌脚本，同源托管会形成存储型 XSS 面
+    ALLOWED_EXTENSIONS = {'pdf', 'docx', 'md', 'txt', 'png', 'jpg', 'jpeg'}
 
     # 文档上传允许的文件类型
     ALLOWED_DOC_EXTENSIONS = {'pdf', 'docx', 'md', 'txt'}
-    # 图片上传允许的文件类型
-    ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'svg'}
+    # 图片上传允许的文件类型（位图；SVG 需独立域名或强制下载，故不放行）
+    ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
     # Flask-Login 配置
     LOGIN_VIEW = 'auth.login'

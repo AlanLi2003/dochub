@@ -1,0 +1,13 @@
+# DocHub 每日备份定时器：每天 03:17 执行（错峰，避免整点）
+[Unit]
+Description=Run DocHub daily backup
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+
+# 不用 systemd 时也可用 cron（crontab -e -u dochub）：
+# 17 3 * * * APP_DIR=/opt/dochub BACKUP_DIR=/var/backups/dochub /bin/bash /opt/dochub/deploy/backup.sh >> /var/log/dochub-backup.log 2>&1

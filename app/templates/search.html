@@ -13,7 +13,7 @@
         </form>
 
         <div class="card filter-card">
-            <h3 class="filter-title">文档类型 <span class="muted" style="font-size:12px;font-weight:400">（单选）</span></h3>
+            <h3 class="filter-title">文档类型 <span class="muted u-fs12 u-fw400">（单选）</span></h3>
             <div class="filter-list">
                 <a class="filter-item {% if not selected_type %}active{% endif %}"
                    href="{{ search_href(1, doc_type='') }}">
@@ -30,7 +30,7 @@
         </div>
 
         <div class="card filter-card">
-            <h3 class="filter-title">品牌 <span class="muted" style="font-size:12px;font-weight:400">（单选）</span></h3>
+            <h3 class="filter-title">品牌 <span class="muted u-fs12 u-fw400">（单选）</span></h3>
             <div class="filter-list">
                 <a class="filter-item {% if not selected_brand_id %}active{% endif %} {{ 'is-disabled' if locked_brand }}"
                    {% if locked_brand %}aria-disabled="true"{% else %}href="{{ search_href(1, brand='') }}"{% endif %}>
@@ -52,7 +52,7 @@
                 {% endfor %}
             </div>
             {% if locked_brand %}
-            <p class="muted" style="font-size:12px;margin:8px 4px 0">搜索词为品牌全称，已自动锁定「{{ locked_brand.name }}」，不可同时选择其他品牌。</p>
+            <p class="muted u-fs12 u-mt8">搜索词为品牌全称，已自动锁定「{{ locked_brand.name }}」，不可同时选择其他品牌。</p>
             {% endif %}
         </div>
     </aside>
@@ -62,15 +62,15 @@
         <div class="card search-summary-card">
             <div>
                 {% if q %}
-                <h2 style="font-size:18px;margin-bottom:4px">「{{ q }}」的检索结果</h2>
-                <p class="muted" style="font-size:13px">
-                    找到 <strong style="color:var(--primary-600)">{{ total }}</strong> 个相关产品，
+                <h2 class="u-fs18">「{{ q }}」的检索结果</h2>
+                <p class="muted u-fs13">
+                    找到 <strong class="u-text-primary">{{ total }}</strong> 个相关产品，
                     共 {{ total_docs }} 篇文档 · 检索范围：产品 / 品牌全称
                     {% if mode != 'and' %}<span class="muted">（已放宽匹配以获得更多结果）</span>{% endif %}
                 </p>
                 {% else %}
-                <h2 style="font-size:18px;margin-bottom:4px">文档浏览</h2>
-                <p class="muted" style="font-size:13px">按左侧条件筛选，或输入产品 / 品牌全称检索</p>
+                <h2 class="u-fs18">文档浏览</h2>
+                <p class="muted u-fs13">按左侧条件筛选，或输入产品 / 品牌全称检索</p>
                 {% endif %}
             </div>
             <div class="sort-bar">
@@ -150,7 +150,7 @@
             {% if q %}
             <h3>未找到与「{{ q }}」相关的产品</h3>
             <p class="muted">检索仅匹配产品 / 品牌全称，请尝试：</p>
-            <ul style="text-align:left;max-width:420px;margin:12px auto;color:var(--text-secondary)">
+            <ul class="u-tip-list">
                 <li>输入完整产品名（如「小米路由器 AX3600」「Microsoft Excel」）</li>
                 <li>输入品牌全称（如「小米」「微软」「腾讯」）</li>
                 <li>减少筛选条件后重试</li>

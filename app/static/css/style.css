@@ -391,3 +391,17 @@ ul, ol { list-style: none; }
   .search-sidebar { position:static; }
   .search-summary-card { flex-direction:column; align-items:flex-start; }
 }
+
+/* ===== CSP 合规工具类：替代内联 style 属性（#4） ===== */
+.u-narrow { max-width: 800px; }
+.u-narrow-700 { max-width: 700px; }
+.u-fs12 { font-size: 12px; }
+.u-fs13 { font-size: 13px; }
+.u-fs18 { font-size: 18px; margin-bottom: 4px; }
+.u-fw400 { font-weight: 400; }
+.u-mt8 { margin: 8px 4px 0; }
+.u-mb4 { margin-bottom: 4px; }
+.u-text-primary { color: var(--primary-600); }
+.u-tip-list { text-align: left; max-width: 420px; margin: 12px auto; color: var(--text-secondary); }
+.u-muted-line { padding: 6px 2px; font-size: 13px; }
+.reading-progress-fill { width: 0; }

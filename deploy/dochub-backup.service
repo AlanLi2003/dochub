@@ -1,0 +1,15 @@
+# DocHub 每日备份 systemd 服务（被 timer 调用）
+# 安装：
+#   sudo cp deploy/backup.sh /opt/dochub/deploy/backup.sh && sudo chmod +x /opt/dochub/deploy/backup.sh
+#   sudo cp deploy/dochub-backup.service deploy/dochub-backup.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now dochub-backup.timer
+[Unit]
+Description=DocHub daily backup (SQLite + uploads)
+
+[Service]
+Type=oneshot
+User=dochub
+Environment=APP_DIR=/opt/dochub
+Environment=BACKUP_DIR=/var/backups/dochub
+Environment=KEEP_DAYS=14
+ExecStart=/bin/bash /opt/dochub/deploy/backup.sh

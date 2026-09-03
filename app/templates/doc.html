@@ -4,7 +4,7 @@
 
 <!-- 阅读进度条 -->
 <div class="reading-progress-bar" data-reading-progress data-doc-id="{{ doc.id }}">
-  <div class="reading-progress-fill" style="width: 0%;"></div>
+  <div class="reading-progress-fill"></div>
 </div>
 
 <div class="reader-layout">
@@ -187,7 +187,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
 .reading-progress-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--border-light); z-index: 200; }
 .reading-progress-fill { height: 100%; background: var(--primary); transition: width 0.1s; }
 .reader-layout { display: flex; max-width: 1200px; margin: 0 auto; padding: 0 24px; min-height: calc(100vh - 64px); }

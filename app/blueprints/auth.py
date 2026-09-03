@@ -1,15 +1,30 @@
 """认证蓝图：注册、登录、登出"""
 import re
+import secrets
 from urllib.parse import urlparse
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db
 from app.models import User
+from app.security import check_ip_rate, login_guard
 
 auth_bp = Blueprint('auth', __name__)
 
+# 限流参数：登录每 IP 每分钟最多 12 次尝试；注册每 IP 每分钟最多 5 次
+LOGIN_IP_MAX, LOGIN_IP_WINDOW = 12, 60
+REGISTER_IP_MAX, REGISTER_IP_WINDOW = 5, 60
+
 # 邮箱格式正则
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+
+def _rotate_session():
+    """登录/注册成功后清空匿名期会话并重建 CSRF 令牌，防会话固定攻击（#5）。
+    必须在 login_user 之前调用：login_user 随后写入新的身份信息。"""
+    from flask import session
+    session.clear()
+    session['csrf_token'] = secrets.token_hex(32)
+    session.permanent = False
 
 
 def safe_next(target):
@@ -33,6 +48,12 @@ def register():
         return redirect(url_for('main.index'))
 
     if request.method == 'POST':
+        # 注册接口按 IP 限流，防批量注册/撞库
+        allowed, retry_after = check_ip_rate('register', REGISTER_IP_MAX, REGISTER_IP_WINDOW)
+        if not allowed:
+            flash(f'操作过于频繁，请 {retry_after} 秒后再试', 'error')
+            return render_template('auth/register.html'), 429
+
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
@@ -67,7 +88,8 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        # 自动登录
+        # 自动登录（先轮换会话，防会话固定 #5）
+        _rotate_session()
         login_user(user)
         flash('注册成功，欢迎加入 DocHub！', 'success')
         return redirect(url_for('main.index'))
@@ -90,6 +112,19 @@ def login():
             flash('请输入用户名/邮箱和密码', 'error')
             return render_template('auth/login.html', identifier=identifier), 400
 
+        # 按 IP 限流，缓解撞库/爆破
+        allowed, retry_after = check_ip_rate('login', LOGIN_IP_MAX, LOGIN_IP_WINDOW)
+        if not allowed:
+            flash(f'尝试过于频繁，请 {retry_after} 秒后再登录', 'error')
+            return render_template('auth/login.html', identifier=identifier), 429
+
+        # 按账号的连续失败退避（指数锁定）
+        guard = login_guard()
+        lock_left = guard.locked_for(identifier)
+        if lock_left > 0:
+            flash(f'该账号失败次数过多，已临时锁定，请 {lock_left} 秒后再试', 'error')
+            return render_template('auth/login.html', identifier=identifier), 429
+
         # 任何数据库 / 会话异常都回滚并回到登录页，绝不向用户抛裸 500
         try:
             # 支持用户名或邮箱登录
@@ -98,9 +133,17 @@ def login():
             ).first()
 
             if user is None or not user.check_password(password):
-                flash('用户名/邮箱或密码错误', 'error')
+                # 记录失败并在达到阈值后锁定该账号
+                lock_secs = guard.record_failure(identifier)
+                if lock_secs:
+                    flash(f'密码连续错误，账号已锁定 {lock_secs} 秒', 'error')
+                else:
+                    flash('用户名/邮箱或密码错误', 'error')
                 return render_template('auth/login.html', identifier=identifier), 401
 
+            # 登录成功：清除失败计数；先轮换会话与 CSRF 令牌（防会话固定 #5），再写入身份
+            guard.clear(identifier)
+            _rotate_session()
             login_user(user, remember=remember)
             db.session.commit()
         except Exception as exc:

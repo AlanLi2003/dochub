@@ -3,8 +3,9 @@ import os
 import io
 import json
 import re
+from datetime import datetime
 from urllib.parse import quote, urlencode
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort, send_from_directory, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort, send_from_directory, send_file, current_app
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models import (
@@ -12,7 +13,8 @@ from app.models import (
     Post, Reply, Favorite, ReadingHistory, Contribution, Term
 )
 from config import Config
-from app.search import search_products, decorate_results
+from app.search import search_products, decorate_results, sync_document
+from app.security import admin_required
 
 main_bp = Blueprint('main', __name__)
 
@@ -787,3 +789,117 @@ def add_comment(doc_id):
             return jsonify({'success': True})
         flash('评论成功', 'success')
     return redirect(url_for('main.doc_detail', doc_id=doc_id))
+
+
+# ============================================================
+# 管理员审核后台（#8）：贡献内容审批 / 驳回，通过后真正入库并同步检索索引
+# ============================================================
+
+CONTRIB_TYPE_LABEL = {'brand': '网站/品牌', 'product': '产品', 'document': '文档'}
+
+
+@main_bp.route('/admin/contributions')
+@admin_required
+def admin_contributions():
+    """贡献审核列表，可按状态筛选"""
+    status = request.args.get('status', 'pending')
+    if status not in ('pending', 'approved', 'rejected', 'all'):
+        status = 'pending'
+    query = Contribution.query
+    if status != 'all':
+        query = query.filter_by(status=status)
+    contributions = query.order_by(Contribution.submitted_at.desc()).all()
+    pending_count = Contribution.query.filter_by(status='pending').count()
+    # 解析每条贡献的 payload，便于模板展示明细
+    parsed = []
+    for c in contributions:
+        try:
+            payload = json.loads(c.payload_json or '{}')
+        except ValueError:
+            payload = {}
+        parsed.append((c, payload))
+    return render_template(
+        'admin/review.html', parsed=parsed, cur_status=status,
+        pending_count=pending_count, type_labels=CONTRIB_TYPE_LABEL,
+        active_page='admin'
+    )
+
+
+@main_bp.route('/admin/contribution/<int:contrib_id>/approve', methods=['POST'])
+@admin_required
+def approve_contribution(contrib_id):
+    """审核通过：按类型创建实体并发布，文档同时进入全文索引"""
+    contrib = Contribution.query.get_or_404(contrib_id)
+    if contrib.status != 'pending':
+        abort(400, '该贡献已处理，不能重复审核')
+    try:
+        payload = json.loads(contrib.payload_json or '{}')
+        if contrib.contribution_type == 'brand':
+            obj = Brand(
+                name=contrib.title,
+                website_url=payload.get('website_url', ''),
+                description=payload.get('description', ''),
+                status='active',
+            )
+            db.session.add(obj)
+            db.session.flush()
+            contrib.target_id = obj.id
+        elif contrib.contribution_type == 'product':
+            brand_id = payload.get('brand_id')
+            if not brand_id:
+                raise ValueError('缺少所属品牌')
+            obj = Product(
+                brand_id=int(brand_id), name=contrib.title,
+                category=payload.get('category', ''),
+                description=payload.get('description', ''), status='active',
+            )
+            db.session.add(obj)
+            db.session.flush()
+            contrib.target_id = obj.id
+        elif contrib.contribution_type == 'document':
+            product_id = payload.get('product_id')
+            if not product_id:
+                raise ValueError('缺少所属产品')
+            obj = Document(
+                product_id=int(product_id), title=contrib.title,
+                doc_type=payload.get('doc_type', 'other') or 'other',
+                description=payload.get('description', ''),
+                original_url=payload.get('original_url', ''),
+                file_path=payload.get('file_path', ''),
+                content=payload.get('content', ''),
+                status='published',
+            )
+            db.session.add(obj)
+            db.session.flush()
+            contrib.target_id = obj.id
+            # 发布后同步 FTS 全文索引，保证新文档立即可被检索
+            sync_document(obj.id, 'published')
+        else:
+            abort(400, '未知贡献类型')
+
+        contrib.status = 'approved'
+        contrib.review_note = '审核通过'
+        contrib.reviewed_at = datetime.utcnow()
+        db.session.commit()
+        flash(f'已通过并发布：{contrib.title}', 'success')
+    except Exception as exc:  # 审核入库失败不产生半成品
+        db.session.rollback()
+        current_app.logger.exception('贡献审核通过失败: %s', exc)
+        flash(f'审核失败：{exc}', 'error')
+    return redirect(url_for('main.admin_contributions', status=request.args.get('status', 'pending')))
+
+
+@main_bp.route('/admin/contribution/<int:contrib_id>/reject', methods=['POST'])
+@admin_required
+def reject_contribution(contrib_id):
+    """审核驳回：记录原因，不创建实体"""
+    contrib = Contribution.query.get_or_404(contrib_id)
+    if contrib.status != 'pending':
+        abort(400, '该贡献已处理，不能重复审核')
+    note = (request.form.get('review_note') or '').strip() or '不符合收录要求'
+    contrib.status = 'rejected'
+    contrib.review_note = note
+    contrib.reviewed_at = datetime.utcnow()
+    db.session.commit()
+    flash(f'已驳回：{contrib.title}', 'info')
+    return redirect(url_for('main.admin_contributions', status=request.args.get('status', 'pending')))

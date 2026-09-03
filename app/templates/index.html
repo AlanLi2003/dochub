@@ -71,7 +71,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
 /* Hero 区 */
 .hero-section { background: var(--surface); border-bottom: 1px solid var(--border); padding: 56px 0 48px; }
 .hero-content { max-width: 720px; margin: 0 auto; text-align: center; }

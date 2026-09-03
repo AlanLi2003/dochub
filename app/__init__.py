@@ -2,7 +2,7 @@
 import os
 import secrets
 import logging
-from flask import Flask, render_template, session, request, abort
+from flask import Flask, render_template, session, request, abort, g
 from sqlalchemy import text
 from config import Config, select_config
 from app.extensions import db, login_manager
@@ -44,6 +44,15 @@ def normalize_password_hashes():
         db.session.commit()
 
 
+def ensure_admin_role():
+    """确保种子管理员账号具有 admin 角色（旧库可能在引入审核后台前已创建，幂等修正 #8）。"""
+    from app.models import User
+    admin = User.query.filter_by(username='admin').first()
+    if admin and admin.role != 'admin':
+        admin.role = 'admin'
+        db.session.commit()
+
+
 def get_csrf_token():
     """生成或获取当前会话的 CSRF 令牌"""
     if 'csrf_token' not in session:
@@ -58,6 +67,12 @@ def create_app(config_class=None):
     （development/production，默认 development）选择配置。"""
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_class or select_config())
+
+    # 生产环境位于 nginx 等反向代理之后：信任 1 跳 X-Forwarded-* ，
+    # 使 request.scheme/remote_addr 正确，Secure Cookie 与 HSTS 才能按 HTTPS 生效（#2）
+    if os.environ.get('APP_ENV', 'development').lower() == 'production':
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     # 确保 instance 目录和上传目录存在
     os.makedirs(app.instance_path, exist_ok=True)
@@ -88,6 +103,11 @@ def create_app(config_class=None):
         db.session.rollback()
         return render_template('errors/500.html'), 500
 
+    # 每请求生成 CSP nonce，供内联 <style>/<script> 白名单使用（#4）
+    @app.before_request
+    def _assign_csp_nonce():
+        g.csp_nonce = secrets.token_hex(16)
+
     # CSRF 防护：对所有非安全方法校验令牌
     @app.before_request
     def csrf_protect():
@@ -113,21 +133,25 @@ def create_app(config_class=None):
         return {
             'current_year': datetime.now().year,
             'csrf_token': get_csrf_token(),
+            'csp_nonce': getattr(g, 'csp_nonce', None) or secrets.token_hex(16),
         }
 
-    # 统一安全响应头（防点击劫持 / MIME 嗅探 / 引用泄露；CSP 允许同源与内联以兼容现有模板）
+    # 统一安全响应头。CSP 用每请求 nonce 白名单内联 <style>/<script>，
+    # 不再使用 'unsafe-inline'（#4）；外部脚本/样式仅允许同源。
     @app.after_request
     def set_security_headers(response):
+        nonce = getattr(g, 'csp_nonce', None) or secrets.token_hex(16)
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         response.headers.setdefault(
             'Content-Security-Policy',
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; "
+            f"script-src 'self' 'nonce-{nonce}'; "
+            f"style-src 'self' 'nonce-{nonce}'; "
             "img-src 'self' data:; "
             "font-src 'self' data:; "
+            "object-src 'none'; "
             "frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
         )
         # 仅在显式启用 HTTPS（生产配置）时下发 HSTS
@@ -140,6 +164,7 @@ def create_app(config_class=None):
         db.create_all()
         ensure_schema()
         normalize_password_hashes()
+        ensure_admin_role()
         # 初始化全文检索索引，并在文档数与索引行数不一致时自动重建（自愈）
         from app.search import ensure_index
         ensure_index()

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}贡献审核 | DocHub{% endblock %}
+{% block content %}
+<style nonce="{{ csp_nonce }}">
+  .admin-wrap { max-width: 960px; margin: 24px auto; }
+  .admin-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .status-tabs a { margin-right:12px; color:var(--text-secondary); text-decoration:none; }
+  .status-tabs a.active { color:var(--primary-600); font-weight:600; }
+  .review-card { background:var(--surface,#fff); border:1px solid var(--border,#e5e7eb); border-radius:12px; padding:16px 18px; margin-bottom:14px; }
+  .review-meta { display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:13px; color:var(--text-secondary); margin-bottom:8px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; }
+  .badge-pending { background:#FEF3C7; color:#92400E; }
+  .badge-approved { background:#DCFCE7; color:#15803D; }
+  .badge-rejected { background:#FEE2E2; color:#B91C1C; }
+  .review-title { margin:4px 0; }
+  .payload-table { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0; }
+  .payload-table td { border:1px solid var(--border,#e5e7eb); padding:6px 10px; vertical-align:top; }
+  .payload-table td:first-child { width:130px; color:var(--text-secondary); background:var(--bg,#f9fafb); }
+  .review-actions { display:flex; gap:10px; align-items:flex-end; margin-top:10px; flex-wrap:wrap; }
+  .review-actions textarea { min-width:260px; }
+  .status-tabs { margin-bottom:16px; }
+  .review-form-inline { display:flex; gap:8px; align-items:flex-end; }
+</style>
+
+<div class="container admin-wrap">
+  <div class="admin-head">
+    <div>
+      <h1 class="page-title">贡献审核</h1>
+      <p class="muted u-fs13">待处理 <strong>{{ pending_count }}</strong> 条；通过后内容将正式发布，文档会同步进入检索索引。</p>
+    </div>
+  </div>
+
+  <div class="status-tabs">
+    {% for s, label in [('pending','待审核'),('approved','已通过'),('rejected','已驳回'),('all','全部')] %}
+      <a href="{{ url_for('main.admin_contributions', status=s) }}" class="{% if cur_status == s %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  {% if not parsed %}
+    <div class="review-card"><p class="muted">当前筛选下暂无贡献记录。</p></div>
+  {% endif %}
+
+  {% for c, payload in parsed %}
+  <div class="review-card">
+    <div class="review-meta">
+      <span class="badge badge-{{ c.status }}">
+        {% if c.status == 'pending' %}待审核{% elif c.status == 'approved' %}已通过{% else %}已驳回{% endif %}
+      </span>
+      <strong>{{ type_labels.get(c.contribution_type, c.contribution_type) }}</strong>
+      <span>#{{ c.id }}</span>
+      <span>提交人 ID：{{ c.user_id }}</span>
+      <span>{{ c.submitted_at.strftime('%Y-%m-%d %H:%M') if c.submitted_at else '' }}</span>
+      {% if c.reviewed_at %}<span>处理于 {{ c.reviewed_at.strftime('%Y-%m-%d %H:%M') }}</span>{% endif %}
+    </div>
+    <h3 class="review-title">{{ c.title }}</h3>
+    <table class="payload-table">
+      {% for k, v in payload.items() %}
+        {% if k != 'file_path' or v %}
+        <tr><td>{{ k }}</td><td>{{ v if v else '—' }}</td></tr>
+        {% endif %}
+      {% endfor %}
+      {% if c.review_note %}<tr><td>审核意见</td><td>{{ c.review_note }}</td></tr>{% endif %}
+    </table>
+
+    {% if c.status == 'pending' %}
+    <div class="review-actions">
+      <form method="post" action="{{ url_for('main.approve_contribution', contrib_id=c.id, status=cur_status) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-primary">通过并发布</button>
+      </form>
+      <form class="review-form-inline" method="post" action="{{ url_for('main.reject_contribution', contrib_id=c.id, status=cur_status) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input class="form-input" type="text" name="review_note" placeholder="驳回原因（可选）">
+        <button type="submit" class="btn">驳回</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

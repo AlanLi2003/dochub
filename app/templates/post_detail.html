@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ post.title }} | DocHub社区{% endblock %}
 {% block content %}
-<div class="container" style="max-width:800px;">
+<div class="container u-narrow">
   <a href="{{ url_for('main.community', product=post.product_id if post.product_id) }}" class="back-link">← 返回社区</a>
   <article class="post-detail">
     <header class="post-detail-header">
@@ -69,7 +69,7 @@
 </div>
 {% endblock %}
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
 .back-link { display: inline-block; font-size: 13px; color: var(--text-secondary); text-decoration: none; margin-bottom: 16px; }
 .back-link:hover { color: var(--primary); }
 .post-detail { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 24px; }

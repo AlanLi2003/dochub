@@ -2,7 +2,8 @@ Flask==3.0.3
 Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 Werkzeug==3.0.3
-jieba>=0.42.1
-reportlab>=4.0.0
+# 锁定到双环境验证过的具体版本，保证可复现构建
+jieba==0.42.1
+reportlab==5.0.1
 # 生产 WSGI 服务器（本地开发用不到，部署到 Linux 时使用）
 gunicorn==22.0.0

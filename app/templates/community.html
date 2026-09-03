@@ -117,7 +117,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
 .community-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap:16px; }
 .community-title { font-family: var(--font-serif); font-size: 26px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
 .community-subtitle { font-size: 14px; color: var(--text-secondary); }

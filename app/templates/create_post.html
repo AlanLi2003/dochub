@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}发布帖子 | DocHub社区{% endblock %}
 {% block content %}
-<div class="container" style="max-width:700px;">
+<div class="container u-narrow-700">
   <h1 class="page-title">发布帖子</h1>
   <div class="contribute-form-card">
     <form method="post" action="{{ url_for('main.create_post') }}">
@@ -63,13 +63,13 @@
 </div>
 {% endblock %}
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
 .page-title { font-family: var(--font-serif); font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 20px; }
 .contribute-form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px 32px; box-shadow: var(--shadow-sm); }
 .form-hint { font-size: 12px; font-weight: 400; color: var(--text-tertiary); margin-left: 6px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-light); }
 </style>
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function () {
   const productSel = document.getElementById('productSelect');
   const docGroup = document.getElementById('docSelectGroup');

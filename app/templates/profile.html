@@ -40,7 +40,7 @@
             <span class="history-brand">{{ item.document.product.brand.name if item.document.product and item.document.product.brand else '' }}</span>
             <h3 class="history-title">{{ item.document.title }}</h3>
             <div class="history-progress">
-              <div class="history-progress-bar"><div class="history-progress-fill" style="width:{{ item.progress }}%;"></div></div>
+              <div class="history-progress-bar"><div class="history-progress-fill" data-width="{{ item.progress }}"></div></div>
               <span class="history-progress-text">{{ item.progress }}%</span>
             </div>
           </div>
@@ -121,7 +121,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
 .profile-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 32px 0; margin-bottom: 24px; }
 .profile-info { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; }
 .profile-avatar-lg { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #fff; flex-shrink: 0; }

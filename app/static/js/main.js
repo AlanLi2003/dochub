@@ -11,7 +11,16 @@ document.addEventListener('DOMContentLoaded', function () {
     initReadingProgress();
     initBackToTop();
     initFlashDismiss();
+    applyDataWidths();
 });
+
+// CSP 禁止内联 style 属性，服务端渲染的进度条宽度改由 data-width 经外部脚本应用（#4）
+function applyDataWidths() {
+    document.querySelectorAll('[data-width]').forEach(function (el) {
+        const w = parseFloat(el.getAttribute('data-width'));
+        if (!Number.isNaN(w)) el.style.width = w + '%';
+    });
+}
 
 // ============================================================
 // 搜索联想（所有搜索框共用，防抖请求 /api/search/suggest）

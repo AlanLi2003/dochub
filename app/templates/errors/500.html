@@ -9,7 +9,7 @@
 </div>
 {% endblock %}
 {% block extra_css %}
-<style>
+<style nonce="{{ csp_nonce }}">
 .error-page { text-align: center; padding: 80px 20px; }
 .error-code { font-family: var(--font-serif); font-size: 96px; font-weight: 900; color: var(--error); line-height: 1; margin-bottom: 16px; }
 .error-title { font-family: var(--font-serif); font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }

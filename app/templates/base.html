@@ -27,6 +27,9 @@
         <a href="{{ url_for('main.categories') }}" class="nav-link {% if active_page == 'categories' %}active{% endif %}">分类浏览</a>
         <a href="{{ url_for('main.community') }}" class="nav-link {% if active_page == 'community' %}active{% endif %}">社区</a>
         <a href="{{ url_for('main.contribute') }}" class="nav-link {% if active_page == 'contribute' %}active{% endif %}">贡献文档</a>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+        <a href="{{ url_for('main.admin_contributions') }}" class="nav-link {% if active_page == 'admin' %}active{% endif %}">审核后台</a>
+        {% endif %}
       </div>
     </div>
     <div class="nav-right">
