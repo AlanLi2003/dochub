@@ -13,10 +13,8 @@ from app import create_app
 from app.extensions import db
 from app.search import rebuild_index
 from app.models import (
-    User, Category, Brand, Product, Document, Term
+    User, Category, Brand, Product, Document, Term, Post
 )
-
-app = create_app()
 
 
 # ============================================================
@@ -841,8 +839,10 @@ def build_toc(markdown_text):
 # 种子数据主函数
 # ============================================================
 
-def seed():
-    """初始化所有种子数据"""
+def seed(app=None):
+    """初始化所有种子数据。默认使用默认配置的应用；传入 app 可注入（如指向临时数据库）。"""
+    if app is None:
+        app = create_app()
     with app.app_context():
         # 清空现有数据（按依赖关系逆序删除）
         print('清理现有数据...')

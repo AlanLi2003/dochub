@@ -495,15 +495,21 @@ def download_doc(doc_id):
             as_attachment=True
         )
 
-    # Markdown 正文 → PDF
-    from app.pdf_export import build_pdf_bytes, PdfExportError
+    # Markdown 正文 → PDF（reportlab 缺失或中文字体不可用时统一降级为纯文本，保证下载不中断）
+    try:
+        from app.pdf_export import build_pdf_bytes, PdfExportError
+    except ImportError:
+        # reportlab 未安装：显式置空，走纯文本降级，避免 500
+        build_pdf_bytes, PdfExportError = None, None
     brand_name = doc.product.brand.name if doc.product and doc.product.brand else 'DocHub'
     product_name = doc.product.name if doc.product else ''
     type_label = doc_type_label(doc.doc_type)
     try:
-        pdf_bytes = build_pdf_bytes(doc, type_label=type_label)
+        pdf_bytes = build_pdf_bytes(doc, type_label=type_label) if build_pdf_bytes else None
     except PdfExportError:
-        # PDF 引擎/中文字体不可用时的最终降级：下发纯文本，保证下载不中断
+        pdf_bytes = None
+    if pdf_bytes is None:
+        # PDF 引擎/中文字体/依赖不可用时的最终降级：下发纯文本，保证下载不中断
         from flask import Response
         content = doc.content or f'# {doc.title}\n\n{doc.description}'
         return Response(content, mimetype='text/plain; charset=utf-8',
