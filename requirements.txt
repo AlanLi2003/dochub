@@ -1,0 +1,8 @@
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Werkzeug==3.0.3
+jieba>=0.42.1
+reportlab>=4.0.0
+# 生产 WSGI 服务器（本地开发用不到，部署到 Linux 时使用）
+gunicorn==22.0.0

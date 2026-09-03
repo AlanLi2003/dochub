@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}搜索结果 - DocHub{% endblock %}
+
+{% block content %}
+<div class="search-layout">
+    <!-- 左侧筛选栏：文档类型 / 品牌均为单选 -->
+    <aside class="search-sidebar">
+        <form class="card search-page-form" method="GET" action="{{ url_for('main.search') }}">
+            <div class="search-input-wrap">
+                <input type="text" name="q" class="form-input" placeholder="搜索产品 / 品牌全称…" value="{{ q }}">
+                <button type="submit" class="btn btn-primary">搜索</button>
+            </div>
+        </form>
+
+        <div class="card filter-card">
+            <h3 class="filter-title">文档类型 <span class="muted" style="font-size:12px;font-weight:400">（单选）</span></h3>
+            <div class="filter-list">
+                <a class="filter-item {% if not selected_type %}active{% endif %}"
+                   href="{{ search_href(1, doc_type='') }}">
+                    <span>全部类型</span>
+                </a>
+                {% for key, label, count in doc_types %}
+                <a class="filter-item {% if selected_type == key %}active{% endif %}"
+                   href="{{ search_href(1, doc_type=key) }}">
+                    <span>{{ label }}</span>
+                    <span class="count">{{ count }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card filter-card">
+            <h3 class="filter-title">品牌 <span class="muted" style="font-size:12px;font-weight:400">（单选）</span></h3>
+            <div class="filter-list">
+                <a class="filter-item {% if not selected_brand_id %}active{% endif %} {{ 'is-disabled' if locked_brand }}"
+                   {% if locked_brand %}aria-disabled="true"{% else %}href="{{ search_href(1, brand='') }}"{% endif %}>
+                    <span>全部品牌</span>
+                </a>
+                {% for brand in brands %}
+                {% if brand.locked_disabled %}
+                <span class="filter-item is-disabled" title="当前搜索词已锁定该品牌维度">
+                    <span>{{ brand.name }}</span>
+                    <span class="count">{{ brand.count }}</span>
+                </span>
+                {% else %}
+                <a class="filter-item {% if selected_brand_id == brand.id %}active{% endif %} {% if locked_brand and brand.id == locked_brand.id %}is-locked{% endif %}"
+                   href="{{ search_href(1, brand=brand.id) }}">
+                    <span>{{ brand.name }}{% if locked_brand and brand.id == locked_brand.id %} 🔒{% endif %}</span>
+                    <span class="count">{{ brand.count }}</span>
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% if locked_brand %}
+            <p class="muted" style="font-size:12px;margin:8px 4px 0">搜索词为品牌全称，已自动锁定「{{ locked_brand.name }}」，不可同时选择其他品牌。</p>
+            {% endif %}
+        </div>
+    </aside>
+
+    <!-- 右侧搜索结果（按产品聚合分组） -->
+    <div class="search-results">
+        <div class="card search-summary-card">
+            <div>
+                {% if q %}
+                <h2 style="font-size:18px;margin-bottom:4px">「{{ q }}」的检索结果</h2>
+                <p class="muted" style="font-size:13px">
+                    找到 <strong style="color:var(--primary-600)">{{ total }}</strong> 个相关产品，
+                    共 {{ total_docs }} 篇文档 · 检索范围：产品 / 品牌全称
+                    {% if mode != 'and' %}<span class="muted">（已放宽匹配以获得更多结果）</span>{% endif %}
+                </p>
+                {% else %}
+                <h2 style="font-size:18px;margin-bottom:4px">文档浏览</h2>
+                <p class="muted" style="font-size:13px">按左侧条件筛选，或输入产品 / 品牌全称检索</p>
+                {% endif %}
+            </div>
+            <div class="sort-bar">
+                <a class="sort-item {% if current_sort == 'relevance' %}active{% endif %}"
+                   href="{{ search_href(1, sort='relevance') }}">综合排序</a>
+                <a class="sort-item {% if current_sort == 'latest' %}active{% endif %}"
+                   href="{{ search_href(1, sort='latest') }}">最新收录</a>
+                <a class="sort-item {% if current_sort == 'views' %}active{% endif %}"
+                   href="{{ search_href(1, sort='views') }}">最多阅读</a>
+            </div>
+        </div>
+
+        {% if groups %}
+        <div class="product-group-list">
+            {% for product in groups %}
+            <div class="card product-group-card">
+                <div class="product-group-head">
+                    <div class="product-group-title">
+                        {% if product.brand %}<span class="badge badge-primary">{{ product.brand.name }}</span>{% endif %}
+                        <h3>{{ product.name }}</h3>
+                        <span class="muted product-group-count">{{ product.group_docs|length }} 篇文档</span>
+                    </div>
+                    <div class="product-group-links">
+                        {% if product.brand and product.brand.website_url %}
+                        <a href="{{ product.brand.website_url }}" target="_blank" rel="noopener" class="link-sm">品牌官网 ↗</a>
+                        {% endif %}
+                        <a href="{{ url_for('main.community', product=product.id) }}" class="link-sm">相关问答</a>
+                    </div>
+                </div>
+                {% if product.description %}
+                <p class="product-group-desc">{{ product.description }}</p>
+                {% endif %}
+                <ul class="product-doc-list">
+                    {% for doc in product.group_docs %}
+                    <li class="product-doc-row {% if loop.index > 3 %}extra-doc{% endif %}"
+                        {% if loop.index > 3 %}hidden{% endif %}>
+                        <span class="doc-type-tag doc-type-{{ doc.doc_type }}">{{ doc_type_label(doc.doc_type) }}</span>
+                        <a href="{{ url_for('main.doc_detail', doc_id=doc.id) }}" class="product-doc-title">
+                            {{ doc.title_hl|safe if doc.title_hl else doc.title }}
+                        </a>
+                        <span class="muted product-doc-meta">{{ doc.view_count }} 阅读 · {{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if product.group_docs|length > 3 %}
+                <button type="button" class="btn btn-text btn-sm group-toggle-btn" data-expanded="false">
+                    展开全部 {{ product.group_docs|length }} 篇 ▾
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if pagination %}
+        <div class="card pagination-card">
+            <div class="pagination">
+                {% if pagination.prev_url %}
+                <a href="{{ pagination.prev_url }}">上一页</a>
+                {% endif %}
+                {% for p, href in pagination['items'] %}
+                {% if p == pagination.page %}
+                <span class="current">{{ p }}</span>
+                {% else %}
+                <a href="{{ href }}">{{ p }}</a>
+                {% endif %}
+                {% endfor %}
+                {% if pagination.next_url %}
+                <a href="{{ pagination.next_url }}">下一页</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="card empty-state">
+            <div class="empty-icon">🔍</div>
+            {% if q %}
+            <h3>未找到与「{{ q }}」相关的产品</h3>
+            <p class="muted">检索仅匹配产品 / 品牌全称，请尝试：</p>
+            <ul style="text-align:left;max-width:420px;margin:12px auto;color:var(--text-secondary)">
+                <li>输入完整产品名（如「小米路由器 AX3600」「Microsoft Excel」）</li>
+                <li>输入品牌全称（如「小米」「微软」「腾讯」）</li>
+                <li>减少筛选条件后重试</li>
+            </ul>
+            {% else %}
+            <h3>输入产品或品牌全称开始检索</h3>
+            <p class="muted">例如：小米路由器、Microsoft Excel、微信小程序</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

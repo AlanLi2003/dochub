@@ -1,0 +1,18 @@
+# DocHub 可选容器编排：在项目根执行
+#   echo "SECRET_KEY=$(python3 -c 'import secrets;print(secrets.token_hex(32))')" > .env
+#   docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"   # 只绑本机，前置 nginx/TLS；要直接公网访问再改 0.0.0.0
+    environment:
+      APP_ENV: production
+      SECRET_KEY: ${SECRET_KEY:?请先在 .env 设置 SECRET_KEY}
+      FLASK_DEBUG: "0"
+    volumes:
+      - ../instance:/app/instance
+      - ../uploads:/app/app/static/uploads
+    restart: always

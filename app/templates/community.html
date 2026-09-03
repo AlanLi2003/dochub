@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}社区讨论 | DocHub{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="community-header">
+    <div>
+      <h1 class="community-title">社区讨论</h1>
+      <p class="community-subtitle">围绕具体产品和官方文档交流使用经验、提问求助、分享技巧</p>
+    </div>
+    {% if current_user.is_authenticated %}
+    <a href="{{ url_for('main.create_post', product_id=selected_product.id if selected_product) }}" class="btn btn-primary">
+      {{ '针对「' + selected_product.name + '」发帖' if selected_product else '发帖' }}
+    </a>
+    {% else %}
+    <a href="{{ url_for('auth.login', next=url_for('main.community', product=selected_product.id if selected_product)) }}" class="btn btn-primary">登录发帖</a>
+    {% endif %}
+  </div>
+
+  {# 当前定向筛选提示 #}
+  {% if selected_product %}
+  <div class="filter-chip-bar">
+    <span class="filter-chip">
+      产品：{{ selected_product.brand.name if selected_product.brand else '' }} {{ selected_product.name }}
+      <a href="{{ url_for('main.community', board=active_board, kw=community_kw) }}" class="chip-close" title="清除产品筛选">×</a>
+    </span>
+  </div>
+  {% endif %}
+
+  <div class="community-layout">
+    <aside class="community-sidebar">
+      <div class="board-list sidebar-block">
+        <h3 class="sidebar-title">板块</h3>
+        <a href="{{ url_for('main.community', product=selected_product.id if selected_product, kw=community_kw) }}"
+           class="board-item {% if not active_board %}active{% endif %}">
+          <span class="board-name">全部</span>
+        </a>
+        {% for board_key, b_label, board_count in boards %}
+        <a href="{{ url_for('main.community', board=board_key, product=selected_product.id if selected_product, kw=community_kw) }}"
+           class="board-item {% if active_board == board_key %}active{% endif %}">
+          <span class="board-name">{{ b_label }}</span>
+          <span class="board-count">{{ board_count }}</span>
+        </a>
+        {% endfor %}
+      </div>
+
+      <div class="board-list sidebar-block">
+        <h3 class="sidebar-title">按产品定向</h3>
+        <a href="{{ url_for('main.community', board=active_board, kw=community_kw) }}"
+           class="board-item {% if not selected_product %}active{% endif %}">
+          <span class="board-name">全部产品</span>
+        </a>
+        {% for product in products %}
+        <a href="{{ url_for('main.community', board=active_board, product=product.id, kw=community_kw) }}"
+           class="board-item {% if selected_product and selected_product.id == product.id %}active{% endif %}">
+          <span class="board-name board-product-name">
+            {{ product.brand.name if product.brand else '' }} · {{ product.name }}
+          </span>
+          <span class="board-count">{{ product_post_count.get(product.id, 0) }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </aside>
+
+    <div class="community-main">
+      <form class="community-search" method="GET" action="{{ url_for('main.community') }}">
+        {% if active_board %}<input type="hidden" name="board" value="{{ active_board }}">{% endif %}
+        {% if selected_product %}<input type="hidden" name="product" value="{{ selected_product.id }}">{% endif %}
+        <input type="text" name="kw" class="form-input" placeholder="在{% if selected_product %}「{{ selected_product.name }}」{% endif %}社区内搜索问题或经验…" value="{{ community_kw }}">
+        <button type="submit" class="btn btn-primary">搜索</button>
+      </form>
+
+      <div class="posts-sort">
+        <a href="{{ url_for('main.community', board=active_board, product=selected_product.id if selected_product, kw=community_kw, sort='latest') }}"
+           class="sort-link {% if current_sort == 'latest' %}active{% endif %}">最新发布</a>
+        <a href="{{ url_for('main.community', board=active_board, product=selected_product.id if selected_product, kw=community_kw, sort='replies') }}"
+           class="sort-link {% if current_sort == 'replies' %}active{% endif %}">最多回复</a>
+        <a href="{{ url_for('main.community', board=active_board, product=selected_product.id if selected_product, kw=community_kw, sort='views') }}"
+           class="sort-link {% if current_sort == 'views' %}active{% endif %}">最多浏览</a>
+      </div>
+
+      {% for post in posts %}
+      <a href="{{ url_for('main.post_detail', post_id=post.id) }}" class="post-item">
+        <div class="post-top">
+          <h3 class="post-title">{{ post.title }}</h3>
+          {% if post.is_solved %}<span class="badge badge-success">已解决</span>{% endif %}
+        </div>
+        <p class="post-excerpt">{{ post.content[:100] }}{% if post.content|length > 100 %}...{% endif %}</p>
+        <div class="post-tags">
+          <span class="tag">{{ board_label(post.board) }}</span>
+          {% if post.product %}
+          <span class="tag tag-product" title="目标产品">{{ post.product.brand.name if post.product.brand else '' }} · {{ post.product.name }}</span>
+          {% endif %}
+          {% if post.related_document %}
+          <span class="badge badge-primary" title="关联官方文档">📄 {{ doc_type_label(post.related_document.doc_type) }}</span>
+          {% endif %}
+        </div>
+        <div class="post-footer">
+          <div class="post-author">
+            <span class="post-avatar">{{ post.user.username[0]|upper if post.user else '?' }}</span>
+            <span class="post-author-name">{{ post.user.username if post.user else '匿名' }}</span>
+            <span class="post-time">{{ post.created_at.strftime('%m-%d %H:%M') if post.created_at else '' }}</span>
+          </div>
+          <div class="post-stats">
+            <span class="post-stat">{{ post.reply_count }} 回复</span>
+            <span class="post-stat">{{ post.view_count }} 浏览</span>
+          </div>
+        </div>
+      </a>
+      {% else %}
+      <div class="empty-state card">
+        <p>{% if selected_product %}「{{ selected_product.name }}」下还没有相关问答，来发布第一篇吧{% elif community_kw %}没有找到包含「{{ community_kw }}」的帖子{% else %}还没有帖子，来发布第一篇吧{% endif %}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.community-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap:16px; }
+.community-title { font-family: var(--font-serif); font-size: 26px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+.community-subtitle { font-size: 14px; color: var(--text-secondary); }
+.filter-chip-bar { margin-bottom: 16px; }
+.filter-chip { display:inline-flex; align-items:center; gap:8px; background: var(--primary-light); color: var(--primary-700); font-size:13px; font-weight:500; padding:5px 10px 5px 12px; border-radius: 16px; }
+.filter-chip .chip-close { color: var(--primary); text-decoration:none; font-size:15px; line-height:1; }
+.filter-chip .chip-close:hover { color: var(--primary-800); }
+.community-layout { display: flex; gap: 24px; align-items: flex-start; }
+.community-sidebar { width: 230px; flex-shrink: 0; }
+.sidebar-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom:16px; }
+.sidebar-title { font-size: 13px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px; }
+.board-item { display: flex; align-items: center; justify-content: space-between; gap:8px; padding: 8px 10px; border-radius: 6px; text-decoration: none; margin-bottom: 2px; transition: all 0.15s; }
+.board-item:hover { background: var(--bg); text-decoration: none; }
+.board-item.active { background: var(--primary-light); }
+.board-item.active .board-name { color: var(--primary); font-weight: 600; }
+.board-name { font-size: 14px; color: var(--text-primary); }
+.board-product-name { font-size: 13px; }
+.board-count { font-size: 11px; color: var(--text-tertiary); background: var(--bg); padding: 1px 7px; border-radius: 10px; flex-shrink:0; }
+.board-item.active .board-count { background: var(--surface); color: var(--primary); }
+.community-main { flex: 1; min-width: 0; }
+.community-search { display:flex; gap:10px; margin-bottom:14px; }
+.community-search .form-input { flex:1; }
+.posts-sort { display: flex; gap: 16px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light); }
+.sort-link { font-size: 13px; color: var(--text-secondary); text-decoration: none; }
+.sort-link.active { color: var(--primary); font-weight: 600; }
+.post-item { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 12px; text-decoration: none; transition: all 0.2s; }
+.post-item:hover { border-color: var(--primary); box-shadow: var(--shadow-md); text-decoration: none; }
+.post-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.post-title { font-size: 16px; font-weight: 600; color: var(--text-primary); line-height: 1.5; flex: 1; }
+.post-item:hover .post-title { color: var(--primary); }
+.post-excerpt { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.post-tags { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap:wrap; }
+.tag-product { background: var(--primary-light); color: var(--primary-700); }
+.post-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.post-author { display: flex; align-items: center; gap: 8px; }
+.post-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--primary); }
+.post-author-name { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+.post-time { font-size: 12px; color: var(--text-tertiary); }
+.post-stats { display: flex; gap: 16px; font-size: 12px; color: var(--text-tertiary); }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-tertiary); }
+@media (max-width: 768px) { .community-layout { flex-direction: column; } .community-sidebar { width: 100%; } }
+</style>
+{% endblock %}

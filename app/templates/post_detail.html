@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} | DocHub社区{% endblock %}
+{% block content %}
+<div class="container" style="max-width:800px;">
+  <a href="{{ url_for('main.community', product=post.product_id if post.product_id) }}" class="back-link">← 返回社区</a>
+  <article class="post-detail">
+    <header class="post-detail-header">
+      <div class="post-detail-tags">
+        <span class="badge badge-primary">{{ board_label(post.board) }}</span>
+        {% if post.is_solved %}<span class="badge badge-success">已解决</span>{% endif %}
+      </div>
+      <h1 class="post-detail-title">{{ post.title }}</h1>
+      <div class="post-detail-meta">
+        <span class="post-avatar">{{ post.user.username[0]|upper if post.user else '?' }}</span>
+        <span class="post-author-name">{{ post.user.username if post.user else '匿名' }}</span>
+        <span class="post-time">{{ post.created_at.strftime('%Y-%m-%d %H:%M') if post.created_at else '' }}</span>
+        <span class="post-stat">{{ post.view_count }} 浏览</span>
+      </div>
+    </header>
+    {% if post.product or post.related_document %}
+    <div class="related-target-card">
+      <div class="related-target-label">本帖讨论对象</div>
+      {% if post.product %}
+      <a class="related-target-item" href="{{ url_for('main.community', product=post.product.id) }}">
+        <span class="related-target-kind">产品</span>
+        <span>{{ post.product.brand.name if post.product.brand else '' }} {{ post.product.name }}</span>
+      </a>
+      {% endif %}
+      {% if post.related_document %}
+      <a class="related-target-item" href="{{ url_for('main.doc_detail', doc_id=post.related_document.id) }}">
+        <span class="related-target-kind">官方文档</span>
+        <span>{{ post.related_document.title }}</span>
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+    <div class="post-detail-content">{{ post.content }}</div>
+  </article>
+
+  <section class="replies-section">
+    <h2 class="replies-title">回复 ({{ replies|length }})</h2>
+    {% if current_user.is_authenticated %}
+    <form method="post" action="{{ url_for('main.add_reply', post_id=post.id) }}" class="reply-form-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <textarea name="content" rows="3" placeholder="写下你的回复..." required></textarea>
+      <button type="submit" class="btn btn-primary btn-sm">发表回复</button>
+    </form>
+    {% else %}
+    <div class="comment-login-prompt"><p>登录后即可回复</p><a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-sm">登录</a></div>
+    {% endif %}
+    <div class="reply-list">
+      {% for reply in replies %}
+      <div class="reply-item">
+        <div class="comment-avatar">{{ reply.user.username[0]|upper if reply.user else '?' }}</div>
+        <div class="reply-body">
+          <div class="comment-header">
+            <span class="comment-author">{{ reply.user.username if reply.user else '匿名' }}</span>
+            {% if reply.is_best_answer %}<span class="badge badge-success">最佳答案</span>{% endif %}
+            <span class="comment-time">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') if reply.created_at else '' }}</span>
+          </div>
+          <div class="comment-content">{{ reply.content }}</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="no-comments"><p>还没有回复，来发表第一条吧</p></div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block extra_css %}
+<style>
+.back-link { display: inline-block; font-size: 13px; color: var(--text-secondary); text-decoration: none; margin-bottom: 16px; }
+.back-link:hover { color: var(--primary); }
+.post-detail { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 24px; }
+.post-detail-tags { display: flex; gap: 8px; margin-bottom: 16px; }
+.post-detail-title { font-family: var(--font-serif); font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1.4; margin-bottom: 16px; }
+.post-detail-meta { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-tertiary); }
+.post-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--primary); }
+.post-author-name { font-weight: 500; color: var(--text-primary); }
+.post-detail-content { font-size: 15px; line-height: 1.85; color: var(--text-primary); white-space: pre-wrap; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-light); }
+.related-target-card { margin-top: 18px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; display:flex; flex-direction:column; gap:8px; }
+.related-target-label { font-size: 12px; color: var(--text-tertiary); font-weight: 600; }
+.related-target-item { display:flex; align-items:center; gap:10px; font-size:14px; color:var(--text-primary); text-decoration:none; }
+.related-target-item:hover { color: var(--primary); }
+.related-target-kind { font-size:11px; background:var(--primary-light); color:var(--primary-700); padding:2px 8px; border-radius:10px; flex-shrink:0; }
+.replies-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px 28px; }
+.replies-title { font-family: var(--font-serif); font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; }
+.reply-form-inline { margin-bottom: 24px; }
+.reply-form-inline textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; outline: none; margin-bottom: 8px; }
+.reply-form-inline textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.reply-list { display: flex; flex-direction: column; gap: 18px; }
+.reply-item { display: flex; gap: 10px; }
+.reply-body { flex: 1; }
+.comment-login-prompt { text-align: center; padding: 20px; background: var(--bg); border-radius: 8px; margin-bottom: 20px; }
+.comment-login-prompt p { font-size: 14px; color: var(--text-secondary); margin-bottom: 10px; }
+.no-comments { text-align: center; padding: 24px; color: var(--text-tertiary); font-size: 14px; }
+</style>
+{% endblock %}

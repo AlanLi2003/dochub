@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}{{ doc.title }} | DocHub{% endblock %}
+{% block content %}
+
+<!-- 阅读进度条 -->
+<div class="reading-progress-bar" data-reading-progress data-doc-id="{{ doc.id }}">
+  <div class="reading-progress-fill" style="width: 0%;"></div>
+</div>
+
+<div class="reader-layout">
+  <!-- 左侧目录 -->
+  <aside class="reader-sidebar">
+    <div class="reader-sidebar-header">
+      <span class="reader-sidebar-title">目录</span>
+      <span class="reader-sidebar-progress">{{ reading_progress }}%</span>
+    </div>
+    <nav class="reader-toc">
+      {% for item in toc %}
+      <a href="#section-{{ loop.index }}" class="toc-link toc-level-{{ item.level }}" data-toc-link>
+        {{ item.text }}
+      </a>
+      {% endfor %}
+    </nav>
+  </aside>
+
+  <!-- 正文区 -->
+  <article class="reader-content">
+    <!-- 文档信息 -->
+    <header class="doc-header">
+      <div class="doc-header-tags">
+        <span class="badge badge-primary">{{ doc.product.brand.name if doc.product and doc.product.brand else '' }}</span>
+        <span class="badge badge-gray">{{ doc_type_label(doc.doc_type) }}</span>
+        {% if doc.product %}<span class="badge badge-gray">{{ doc.product.name }}</span>{% endif %}
+      </div>
+      <h1 class="doc-title">{{ doc.title }}</h1>
+      {% if doc.description %}<p class="doc-subtitle">{{ doc.description }}</p>{% endif %}
+      <div class="doc-meta">
+        <span class="doc-meta-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          {{ doc.view_count }} 阅读
+        </span>
+        <span class="doc-meta-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          {{ doc.download_count }} 下载
+        </span>
+        <span class="doc-meta-item">{{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '' }}</span>
+        <div class="doc-actions">
+          <button class="btn btn-outline btn-sm" data-favorite="{{ doc.id }}" data-favorited="{{ 'true' if is_favorited else 'false' }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="{% if is_favorited %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+            <span class="fav-label">{{ '已收藏' if is_favorited else '收藏' }}</span>
+          </button>
+          {% if doc.original_url %}
+          <a href="{{ doc.original_url }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" title="跳转至该文档的官方原始页面">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+            官方原文 ↗
+          </a>
+          {% endif %}
+          {% if doc.product and doc.product.brand and doc.product.brand.website_url %}
+          <a href="{{ doc.product.brand.website_url }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" title="跳转至品牌官方网站">
+            品牌官网 ↗
+          </a>
+          {% endif %}
+          {% if doc.product %}
+          <a href="{{ url_for('main.community', product=doc.product.id) }}" class="btn btn-outline btn-sm" title="查看该产品的问答与使用经验">相关问答</a>
+          {% endif %}
+          <a href="{{ url_for('main.download_doc', doc_id=doc.id) }}" class="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            下载 PDF
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- 文档正文 -->
+    <div class="doc-body markdown-body">
+      {{ rendered_content | safe }}
+    </div>
+
+    {% if doc.product %}
+    <div class="doc-ask-bar">
+      <span>没解决问题？</span>
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('main.create_post', doc_id=doc.id, product_id=doc.product.id) }}">针对本文档提问 →</a>
+      {% else %}
+      <a href="{{ url_for('auth.login', next=url_for('main.create_post', doc_id=doc.id, product_id=doc.product.id)) }}">登录后针对本文档提问 →</a>
+      {% endif %}
+      <a href="{{ url_for('main.community', product=doc.product.id) }}">查看该产品全部问答 →</a>
+    </div>
+    {% endif %}
+
+    <!-- 上一章/下一章 -->
+    <nav class="doc-nav">
+      {% if prev_doc %}
+      <a href="{{ url_for('main.doc_detail', doc_id=prev_doc.id) }}" class="doc-nav-link doc-nav-prev">
+        <span class="doc-nav-label">上一篇</span>
+        <span class="doc-nav-title">{{ prev_doc.title }}</span>
+      </a>
+      {% else %}<div class="doc-nav-spacer"></div>{% endif %}
+      {% if next_doc %}
+      <a href="{{ url_for('main.doc_detail', doc_id=next_doc.id) }}" class="doc-nav-link doc-nav-next">
+        <span class="doc-nav-label">下一篇</span>
+        <span class="doc-nav-title">{{ next_doc.title }}</span>
+      </a>
+      {% else %}<div class="doc-nav-spacer"></div>{% endif %}
+    </nav>
+
+    <!-- 评论区 -->
+    <section class="comments-section">
+      <h2 class="comments-title">评论 ({{ comments|length }})</h2>
+
+      <!-- 评论输入 -->
+      {% if current_user.is_authenticated %}
+      <form class="comment-form" action="{{ url_for('main.add_comment', doc_id=doc.id) }}" method="post" data-comment-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="comment-form-avatar">{{ current_user.username[0]|upper }}</div>
+        <div class="comment-form-body">
+          <textarea name="content" rows="3" placeholder="分享你的使用经验或提出问题..." required></textarea>
+          <div class="comment-form-actions">
+            <span class="comment-form-hint">请遵守社区规范，文明发言</span>
+            <button type="submit" class="btn btn-primary btn-sm">发表评论</button>
+          </div>
+        </div>
+      </form>
+      {% else %}
+      <div class="comment-login-prompt">
+        <p>登录后即可发表评论</p>
+        <a href="{{ url_for('auth.login', next=url_for('main.doc_detail', doc_id=doc.id)) }}" class="btn btn-primary btn-sm">登录</a>
+      </div>
+      {% endif %}
+
+      <!-- 评论列表 -->
+      <div class="comment-list" data-comment-list>
+        {% for comment in comments %}
+        <div class="comment-item" id="comment-{{ comment.id }}">
+          <div class="comment-avatar">{{ comment.user.username[0]|upper if comment.user else '?' }}</div>
+          <div class="comment-body">
+            <div class="comment-header">
+              <span class="comment-author">{{ comment.user.username if comment.user else '匿名用户' }}</span>
+              <span class="comment-time">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') if comment.created_at else '' }}</span>
+            </div>
+            <div class="comment-content">{{ comment.content }}</div>
+            <div class="comment-actions">
+              <button class="comment-action-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                {{ comment.like_count }}
+              </button>
+              <button class="comment-action-btn" onclick="document.getElementById('reply-form-{{ comment.id }}').classList.toggle('hidden')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                回复
+              </button>
+            </div>
+            <!-- 回复表单 -->
+            <form id="reply-form-{{ comment.id }}" class="reply-form hidden" action="{{ url_for('main.add_comment', doc_id=doc.id) }}" method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="parent_id" value="{{ comment.id }}">
+              <textarea name="content" rows="2" placeholder="回复 {{ comment.user.username if comment.user else '' }}..." required></textarea>
+              <button type="submit" class="btn btn-primary btn-sm">回复</button>
+            </form>
+            <!-- 子评论 -->
+            {% if comment.replies.count() > 0 %}
+            <div class="comment-replies">
+              {% for reply in comment.replies.all() %}
+              <div class="comment-item comment-reply">
+                <div class="comment-avatar comment-avatar-sm">{{ reply.user.username[0]|upper if reply.user else '?' }}</div>
+                <div class="comment-body">
+                  <div class="comment-header">
+                    <span class="comment-author">{{ reply.user.username if reply.user else '匿名用户' }}</span>
+                    <span class="comment-time">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') if reply.created_at else '' }}</span>
+                  </div>
+                  <div class="comment-content">{{ reply.content }}</div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div class="no-comments">
+          <p>还没有评论，来发表第一条评论吧</p>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </article>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.reading-progress-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--border-light); z-index: 200; }
+.reading-progress-fill { height: 100%; background: var(--primary); transition: width 0.1s; }
+.reader-layout { display: flex; max-width: 1200px; margin: 0 auto; padding: 0 24px; min-height: calc(100vh - 64px); }
+.reader-sidebar { width: 260px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 24px 0; position: sticky; top: 64px; height: calc(100vh - 64px); overflow-y: auto; }
+.reader-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 0 20px 16px; border-bottom: 1px solid var(--border-light); margin-bottom: 12px; }
+.reader-sidebar-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.reader-sidebar-progress { font-size: 12px; color: var(--primary); font-weight: 600; }
+.reader-toc { padding: 0 12px; }
+.toc-link { display: block; padding: 6px 8px; font-size: 13px; color: var(--text-secondary); text-decoration: none; border-radius: 4px; line-height: 1.5; transition: all 0.15s; border-left: 2px solid transparent; }
+.toc-link:hover { color: var(--primary); background: var(--bg); text-decoration: none; }
+.toc-link.active { color: var(--primary); font-weight: 600; background: var(--primary-light); border-left-color: var(--primary); }
+.toc-level-1 { padding-left: 8px; font-weight: 500; }
+.toc-level-2 { padding-left: 24px; font-size: 12px; }
+.toc-level-3 { padding-left: 40px; font-size: 12px; color: var(--text-tertiary); }
+.reader-content { flex: 1; min-width: 0; padding: 32px 40px 48px; max-width: 800px; }
+.doc-header { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border-light); }
+.doc-header-tags { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.doc-title { font-family: var(--font-serif); font-size: 30px; font-weight: 700; color: var(--text-primary); line-height: 1.4; margin-bottom: 12px; }
+.doc-subtitle { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 16px; }
+.doc-meta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.doc-meta-item { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-tertiary); }
+.doc-actions { display: flex; gap: 8px; margin-left: auto; }
+.doc-body { font-size: 15px; line-height: 1.85; color: var(--text-primary); }
+.doc-body h1 { font-family: var(--font-serif); font-size: 26px; font-weight: 700; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); }
+.doc-body h2 { font-family: var(--font-serif); font-size: 22px; font-weight: 700; margin: 28px 0 14px; color: var(--text-primary); }
+.doc-body h3 { font-family: var(--font-serif); font-size: 18px; font-weight: 600; margin: 24px 0 12px; color: var(--text-primary); }
+.doc-body p { margin-bottom: 16px; }
+.doc-body ul, .doc-body ol { margin: 0 0 16px 24px; }
+.doc-body li { margin-bottom: 8px; line-height: 1.7; }
+.doc-body ul li { list-style: disc; }
+.doc-body ol li { list-style: decimal; }
+.doc-body code { background: var(--bg); padding: 2px 6px; border-radius: 3px; font-size: 13px; font-family: "SF Mono", "Monaco", monospace; color: var(--primary); }
+.doc-body pre { background: var(--text-primary); color: #E2E8F0; padding: 16px 20px; border-radius: 8px; overflow-x: auto; margin-bottom: 16px; font-size: 13px; line-height: 1.6; }
+.doc-body pre code { background: none; color: inherit; padding: 0; }
+.doc-body blockquote { border-left: 3px solid var(--primary); background: var(--primary-light); padding: 12px 16px; margin: 0 0 16px; border-radius: 0 6px 6px 0; color: var(--text-secondary); }
+.doc-body table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
+.doc-body th, .doc-body td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+.doc-body th { background: var(--bg); font-weight: 600; }
+.doc-body strong { font-weight: 600; }
+.doc-body a { color: var(--primary); text-decoration: underline; }
+.doc-ask-bar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:20px 0 0; padding:12px 16px; background:var(--bg); border:1px dashed var(--border); border-radius:var(--radius-md); font-size:13px; color:var(--text-secondary); }
+.doc-ask-bar a { color: var(--primary); text-decoration:none; font-weight:500; }
+.doc-ask-bar a:hover { text-decoration:underline; }
+.doc-nav { display: flex; gap: 16px; margin: 40px 0; padding-top: 24px; border-top: 1px solid var(--border-light); }
+.doc-nav-link { flex: 1; display: block; padding: 16px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; text-decoration: none; transition: all 0.2s; }
+.doc-nav-link:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); text-decoration: none; }
+.doc-nav-next { text-align: right; }
+.doc-nav-label { font-size: 12px; color: var(--text-tertiary); margin-bottom: 4px; display: block; }
+.doc-nav-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.doc-nav-spacer { flex: 1; }
+.comments-section { margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--border-light); }
+.comments-title { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 20px; }
+.comment-form { display: flex; gap: 12px; margin-bottom: 28px; }
+.comment-form-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: var(--primary); flex-shrink: 0; }
+.comment-form-body { flex: 1; }
+.comment-form-body textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; outline: none; transition: all 0.15s; line-height: 1.6; }
+.comment-form-body textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.comment-form-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+.comment-form-hint { font-size: 12px; color: var(--text-tertiary); }
+.comment-login-prompt { text-align: center; padding: 24px; background: var(--bg); border-radius: 8px; margin-bottom: 28px; }
+.comment-login-prompt p { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+.comment-list { display: flex; flex-direction: column; gap: 20px; }
+.comment-item { display: flex; gap: 12px; }
+.comment-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: var(--primary); flex-shrink: 0; }
+.comment-avatar-sm { width: 28px; height: 28px; font-size: 12px; }
+.comment-body { flex: 1; min-width: 0; }
+.comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.comment-author { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.comment-time { font-size: 12px; color: var(--text-tertiary); }
+.comment-content { font-size: 14px; color: var(--text-primary); line-height: 1.7; margin-bottom: 8px; }
+.comment-actions { display: flex; gap: 12px; }
+.comment-action-btn { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-tertiary); background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: all 0.15s; }
+.comment-action-btn:hover { color: var(--primary); background: var(--primary-light); }
+.reply-form { margin-top: 10px; display: flex; gap: 8px; align-items: flex-start; }
+.reply-form textarea { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical; outline: none; }
+.comment-replies { margin-top: 12px; padding-left: 12px; border-left: 2px solid var(--border-light); display: flex; flex-direction: column; gap: 14px; }
+.comment-reply { gap: 8px; }
+.no-comments { text-align: center; padding: 32px; color: var(--text-tertiary); font-size: 14px; }
+@media (max-width: 1024px) { .reader-sidebar { display: none; } .reader-content { padding: 24px 20px; } }
+</style>
+{% endblock %}

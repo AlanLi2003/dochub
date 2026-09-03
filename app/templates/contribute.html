@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}贡献文档 | DocHub{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="contribute-page-header">
+    <h1 class="contribute-title">内容贡献中心</h1>
+    <p class="contribute-subtitle">提交未收录的网站、产品和文档，经审核通过后将对所有用户开放</p>
+  </div>
+
+  <div class="contribute-tabs">
+    <a href="{{ url_for('main.contribute', tab='document') }}" class="contribute-tab {% if active_tab == 'document' %}active{% endif %}">上传文档</a>
+    <a href="{{ url_for('main.contribute', tab='brand') }}" class="contribute-tab {% if active_tab == 'brand' %}active{% endif %}">提交网站</a>
+    <a href="{{ url_for('main.contribute', tab='product') }}" class="contribute-tab {% if active_tab == 'product' %}active{% endif %}">添加产品</a>
+    <a href="{{ url_for('main.contribute', tab='my') }}" class="contribute-tab {% if active_tab == 'my' %}active{% endif %}">我的贡献</a>
+  </div>
+
+  {% if active_tab == 'document' %}
+  <div class="contribute-layout">
+    <div class="contribute-form-card">
+      <form method="post" action="{{ url_for('main.contribute_submit', contrib_type='document') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-section">
+          <h3 class="form-section-title"><span class="form-step">1</span>选择文档归属</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">所属品牌 <span class="required">*</span></label>
+              <select class="form-select" name="brand_id" required>
+                <option value="">请选择品牌</option>
+                {% for brand in brands %}
+                <option value="{{ brand.id }}">{{ brand.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">所属产品 <span class="required">*</span></label>
+              <select class="form-select" name="product_id" required>
+                <option value="">请选择产品</option>
+                {% for product in products %}
+                <option value="{{ product.id }}">{{ product.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <h3 class="form-section-title"><span class="form-step">2</span>填写文档信息</h3>
+          <div class="form-group">
+            <label class="form-label">文档标题 <span class="required">*</span></label>
+            <input type="text" class="form-input" name="title" placeholder="例如：小米路由器 AX3600 完整使用手册" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">文档类型</label>
+            <select class="form-select" name="doc_type">
+              <option value="manual">使用手册</option>
+              <option value="quick_start">快速入门</option>
+              <option value="faq">常见问题</option>
+              <option value="troubleshooting">故障排查</option>
+              <option value="feature">功能说明</option>
+              <option value="other">其他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">文档简介</label>
+            <textarea class="form-textarea" name="description" rows="2" placeholder="用1-2句话概括文档内容..."></textarea>
+          </div>
+        </div>
+        <div class="form-section">
+          <h3 class="form-section-title"><span class="form-step">3</span>提供文档内容</h3>
+          <div class="form-group">
+            <label class="form-label">上传文件 <span class="hint">支持 PDF / DOCX / MD / TXT，最大 50MB</span></label>
+            <div class="upload-zone" data-upload-zone>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+              <p class="upload-zone-text">点击或拖拽文件到此处上传</p>
+              <input type="file" name="file" accept=".pdf,.docx,.md,.txt" style="display:none;">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">原文链接 <span class="hint">选填，文档在官网上的原始地址</span></label>
+            <input type="url" class="form-input" name="original_url" placeholder="https://...">
+          </div>
+        </div>
+        <div class="form-actions">
+          <p class="form-note">提交后将在 1-3 个工作日内完成审核</p>
+          <button type="submit" class="btn btn-primary">提交审核</button>
+        </div>
+      </form>
+    </div>
+    <aside class="contribute-sidebar">
+      <div class="sidebar-card">
+        <h4 class="sidebar-title">提交须知</h4>
+        <ul class="sidebar-list">
+          <li>仅接受官方网站来源的文档</li>
+          <li>上传文件需为官方发布的原始文档</li>
+          <li>审核通过后对所有用户开放</li>
+          <li>每通过1篇可获得10积分</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  {% elif active_tab == 'my' %}
+  <div class="my-contributions">
+    {% if contributions %}
+    {% for c in contributions %}
+    <div class="contribution-item">
+      <div class="contribution-info">
+        <span class="badge {% if c.status == 'approved' %}badge-success{% elif c.status == 'pending' %}badge-warning{% else %}badge-error{% endif %}">
+          {% if c.status == 'approved' %}已通过{% elif c.status == 'pending' %}待审核{% elif c.status == 'rejected' %}已拒绝{% else %}已撤回{% endif %}
+        </span>
+        <h3 class="contribution-title">{{ c.title }}</h3>
+        <p class="contribution-meta">提交时间：{{ c.submitted_at.strftime('%Y-%m-%d %H:%M') if c.submitted_at else '' }}</p>
+        {% if c.review_note %}<p class="contribution-note">审核意见：{{ c.review_note }}</p>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+      <p>还没有贡献记录，去提交第一篇文档吧</p>
+      <a href="{{ url_for('main.contribute', tab='document') }}" class="btn btn-primary">上传文档</a>
+    </div>
+    {% endif %}
+  </div>
+
+  {% else %}
+  <div class="contribute-form-card">
+    <form method="post" action="{{ url_for('main.contribute_submit', contrib_type=active_tab) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% if active_tab == 'brand' %}
+      <div class="form-group">
+        <label class="form-label">品牌/网站名称 <span class="required">*</span></label>
+        <input type="text" class="form-input" name="name" placeholder="例如：小米、微软" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">官方网站 URL <span class="required">*</span></label>
+        <input type="url" class="form-input" name="website_url" placeholder="https://www.example.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">品牌简介</label>
+        <textarea class="form-textarea" name="description" rows="3" placeholder="简要介绍该品牌/网站..."></textarea>
+      </div>
+      {% elif active_tab == 'product' %}
+      <div class="form-group">
+        <label class="form-label">所属品牌 <span class="required">*</span></label>
+        <select class="form-select" name="brand_id" required>
+          <option value="">请选择品牌</option>
+          {% for brand in brands %}
+          <option value="{{ brand.id }}">{{ brand.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">产品名称 <span class="required">*</span></label>
+        <input type="text" class="form-input" name="name" placeholder="例如：小米路由器 AX3600" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">产品品类</label>
+        <input type="text" class="form-input" name="category" placeholder="例如：网络设备、办公软件">
+      </div>
+      <div class="form-group">
+        <label class="form-label">产品简介</label>
+        <textarea class="form-textarea" name="description" rows="3" placeholder="简要介绍该产品..."></textarea>
+      </div>
+      {% endif %}
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">提交审核</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.contribute-page-header { text-align: center; margin-bottom: 32px; }
+.contribute-title { font-family: var(--font-serif); font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+.contribute-subtitle { font-size: 14px; color: var(--text-secondary); }
+.contribute-tabs { display: flex; justify-content: center; gap: 0; margin-bottom: 32px; border-bottom: 1px solid var(--border); }
+.contribute-tab { padding: 12px 28px; font-size: 14px; font-weight: 500; color: var(--text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+.contribute-tab:hover { color: var(--primary); text-decoration: none; }
+.contribute-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.contribute-layout { display: flex; gap: 24px; align-items: flex-start; }
+.contribute-form-card { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px 32px; box-shadow: var(--shadow-sm); }
+.form-section { margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--border-light); }
+.form-section:last-of-type { border-bottom: none; padding-bottom: 0; }
+.form-section-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.form-step { width: 22px; height: 22px; background: var(--primary); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+.form-actions { display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-light); }
+.form-note { font-size: 12px; color: var(--text-tertiary); margin-right: auto; }
+.upload-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg); }
+.upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary); background: var(--primary-light); }
+.upload-zone-text { font-size: 14px; color: var(--text-secondary); margin-top: 8px; }
+.contribute-sidebar { width: 260px; flex-shrink: 0; }
+.sidebar-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+.sidebar-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 14px; }
+.sidebar-list { list-style: none; }
+.sidebar-list li { font-size: 13px; color: var(--text-secondary); line-height: 1.7; padding-left: 16px; position: relative; margin-bottom: 8px; }
+.sidebar-list li::before { content: ''; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; background: var(--primary); border-radius: 50%; }
+.my-contributions { max-width: 800px; margin: 0 auto; }
+.contribution-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 12px; }
+.contribution-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 8px 0 4px; }
+.contribution-meta { font-size: 12px; color: var(--text-tertiary); }
+.contribution-note { font-size: 13px; color: var(--error); margin-top: 6px; }
+.empty-state { text-align: center; padding: 60px 20px; }
+.empty-state p { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
+@media (max-width: 768px) { .contribute-layout { flex-direction: column; } .contribute-sidebar { width: 100%; } .form-row { flex-direction: column; } }
+</style>
+{% endblock %}

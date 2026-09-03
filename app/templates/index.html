@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}DocHub - 官方文档聚合阅读平台{% endblock %}
+{% block content %}
+
+<!-- Hero 搜索区 -->
+<section class="hero-section">
+  <div class="container">
+    <div class="hero-content">
+      <h1 class="hero-title">找到你需要的<span class="hero-highlight">官方文档</span></h1>
+      <p class="hero-subtitle">收录各大品牌官网的产品使用说明，支持在线阅读、下载和社区讨论，让非开发者也能轻松解决产品使用问题</p>
+      <form class="hero-search" method="GET" action="{{ url_for('main.search') }}">
+        <div class="hero-search-input">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" name="q" placeholder="搜索产品 / 品牌全称，如：小米路由器、Microsoft Excel">
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg">搜索文档</button>
+      </form>
+      <div class="hero-hot">
+        <span class="hero-hot-label">热门搜索：</span>
+        <a href="{{ url_for('main.search', q='路由器') }}" class="hero-hot-tag">路由器</a>
+        <a href="{{ url_for('main.search', q='Excel') }}" class="hero-hot-tag">Excel</a>
+        <a href="{{ url_for('main.search', q='微信小程序') }}" class="hero-hot-tag">微信小程序</a>
+        <a href="{{ url_for('main.search', q='飞书') }}" class="hero-hot-tag">飞书</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 最新文档 -->
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">最新收录文档</h2>
+      <a href="{{ url_for('main.categories') }}" class="section-link">分类浏览 →</a>
+    </div>
+    <div class="doc-grid">
+      {% for doc in recent_docs %}
+      <a href="{{ url_for('main.doc_detail', doc_id=doc.id) }}" class="doc-card">
+        <div class="doc-card-header">
+          <span class="badge badge-primary">{{ doc.product.brand.name if doc.product and doc.product.brand else '未分类' }}</span>
+          <span class="badge badge-gray">{{ doc_type_label(doc.doc_type) }}</span>
+        </div>
+        <h3 class="doc-card-title">{{ doc.title }}</h3>
+        <p class="doc-card-desc">{{ doc.description[:80] }}{% if doc.description|length > 80 %}...{% endif %}</p>
+        <div class="doc-card-footer">
+          <span class="doc-card-product">{{ doc.product.name if doc.product else '' }}</span>
+          <span class="doc-card-views">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            {{ doc.view_count }}
+          </span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- 贡献引导 -->
+<section class="section">
+  <div class="container">
+    <div class="contribute-banner">
+      <div class="contribute-banner-content">
+        <h2 class="contribute-banner-title">没有找到你需要的文档？</h2>
+        <p class="contribute-banner-desc">提交未收录的网站、产品或文档，审核通过后将对所有用户开放，还可获得贡献积分</p>
+      </div>
+      <a href="{{ url_for('main.contribute') }}" class="btn btn-primary btn-lg">立即贡献文档</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Hero 区 */
+.hero-section { background: var(--surface); border-bottom: 1px solid var(--border); padding: 56px 0 48px; }
+.hero-content { max-width: 720px; margin: 0 auto; text-align: center; }
+.hero-title { font-family: var(--font-serif); font-size: 40px; font-weight: 700; color: var(--text-primary); line-height: 1.3; margin-bottom: 16px; }
+.hero-highlight { color: var(--primary); }
+.hero-subtitle { font-size: 15px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 32px; }
+.hero-search { display: flex; gap: 12px; margin-bottom: 20px; }
+.hero-search-input { flex: 1; height: 52px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; padding: 0 16px; gap: 10px; transition: all 0.15s; position: relative; }
+.hero-search-input:focus-within { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.hero-search-input input { border: none; background: transparent; outline: none; width: 100%; font-size: 15px; }
+.hero-search-input input::placeholder { color: var(--text-tertiary); }
+.hero-hot { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.hero-hot-label { font-size: 13px; color: var(--text-tertiary); }
+.hero-hot-tag { font-size: 13px; color: var(--text-secondary); background: var(--bg); padding: 4px 12px; border-radius: 4px; text-decoration: none; transition: all 0.15s; }
+.hero-hot-tag:hover { color: var(--primary); background: var(--primary-light); text-decoration: none; }
+
+/* 通用 section */
+.section { padding: 48px 0; }
+.section-alt { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.section-title { font-family: var(--font-serif); font-size: 24px; font-weight: 700; color: var(--text-primary); }
+.section-link { font-size: 14px; color: var(--primary); text-decoration: none; }
+.section-link:hover { text-decoration: underline; }
+
+/* 分类卡片 */
+.category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.category-card { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; text-decoration: none; transition: all 0.2s; position: relative; }
+.category-card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); text-decoration: none; transform: translateY(-2px); }
+.category-icon { width: 44px; height: 44px; background: var(--primary-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary); flex-shrink: 0; }
+.category-info { flex: 1; min-width: 0; }
+.category-name { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+.category-count { font-size: 12px; color: var(--text-tertiary); }
+.category-arrow { color: var(--text-tertiary); flex-shrink: 0; transition: transform 0.15s; }
+.category-card:hover .category-arrow { color: var(--primary); transform: translateX(3px); }
+
+/* 文档卡片 */
+.doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.doc-card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; text-decoration: none; transition: all 0.2s; }
+.doc-card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); text-decoration: none; transform: translateY(-2px); }
+.doc-card-header { display: flex; gap: 8px; margin-bottom: 12px; }
+.doc-card-title { font-size: 16px; font-weight: 600; color: var(--text-primary); line-height: 1.5; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.doc-card:hover .doc-card-title { color: var(--primary); }
+.doc-card-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.doc-card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.doc-card-product { font-size: 12px; color: var(--text-tertiary); }
+.doc-card-views { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-tertiary); }
+
+/* 贡献横幅 */
+.contribute-banner { background: linear-gradient(135deg, var(--primary-light) 0%, #DBEAFE 100%); border-radius: var(--radius-xl); padding: 40px 48px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+.contribute-banner-title { font-family: var(--font-serif); font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+.contribute-banner-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+/* 搜索联想框 */
+.search-suggest-box { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 0 0 var(--radius-md) var(--radius-md); border-top: none; box-shadow: var(--shadow-md); z-index: 200; max-height: 320px; overflow-y: auto; display: none; }
+.suggest-item { display: block; padding: 10px 14px; text-decoration: none; border-bottom: 1px solid var(--border-light); transition: background 0.1s; }
+.suggest-item:hover { background: var(--bg); text-decoration: none; }
+.suggest-item:last-child { border-bottom: none; }
+.suggest-title { font-size: 13px; color: var(--text-primary); font-weight: 500; margin-bottom: 2px; }
+.suggest-title mark { background: var(--primary-light); color: var(--primary); padding: 0 2px; border-radius: 2px; }
+.suggest-meta { font-size: 11px; color: var(--text-tertiary); }
+
+@media (max-width: 768px) {
+  .hero-title { font-size: 28px; }
+  .hero-search { flex-direction: column; }
+  .contribute-banner { flex-direction: column; text-align: center; padding: 28px 24px; }
+}
+</style>
+{% endblock %}

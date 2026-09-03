@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}个人中心 | DocHub{% endblock %}
+{% block content %}
+<div class="profile-page">
+  <div class="profile-header">
+    <div class="container">
+      <div class="profile-info">
+        <div class="profile-avatar-lg">{{ current_user.username[0]|upper }}</div>
+        <div class="profile-details">
+          <h1 class="profile-name">{{ current_user.username }}</h1>
+          <p class="profile-email">{{ current_user.email }}</p>
+          {% if current_user.bio %}<p class="profile-bio">{{ current_user.bio }}</p>{% endif %}
+        </div>
+      </div>
+      <div class="profile-stats">
+        <div class="stat-item"><span class="stat-value">{{ stats.documents_read }}</span><span class="stat-label">阅读文档</span></div>
+        <div class="stat-item"><span class="stat-value">{{ stats.favorites }}</span><span class="stat-label">我的收藏</span></div>
+        <div class="stat-item"><span class="stat-value">{{ stats.comments }}</span><span class="stat-label">我的评论</span></div>
+        <div class="stat-item"><span class="stat-value">{{ stats.posts }}</span><span class="stat-label">我的帖子</span></div>
+        <div class="stat-item"><span class="stat-value text-primary">{{ stats.contributions }}</span><span class="stat-label">我的贡献</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="profile-tabs">
+      <a href="{{ url_for('main.profile', tab='history') }}" class="profile-tab {% if active_tab == 'history' %}active{% endif %}">阅读历史</a>
+      <a href="{{ url_for('main.profile', tab='favorites') }}" class="profile-tab {% if active_tab == 'favorites' %}active{% endif %}">我的收藏</a>
+      <a href="{{ url_for('main.profile', tab='comments') }}" class="profile-tab {% if active_tab == 'comments' %}active{% endif %}">我的评论</a>
+      <a href="{{ url_for('main.profile', tab='posts') }}" class="profile-tab {% if active_tab == 'posts' %}active{% endif %}">我的帖子</a>
+      <a href="{{ url_for('main.profile', tab='contributions') }}" class="profile-tab {% if active_tab == 'contributions' %}active{% endif %}">我的贡献</a>
+    </div>
+
+    <div class="profile-content">
+      {% if active_tab == 'history' %}
+        {% if reading_history %}
+        {% for item in reading_history %}
+        <a href="{{ url_for('main.doc_detail', doc_id=item.document.id) }}" class="history-item">
+          <div class="history-info">
+            <span class="history-brand">{{ item.document.product.brand.name if item.document.product and item.document.product.brand else '' }}</span>
+            <h3 class="history-title">{{ item.document.title }}</h3>
+            <div class="history-progress">
+              <div class="history-progress-bar"><div class="history-progress-fill" style="width:{{ item.progress }}%;"></div></div>
+              <span class="history-progress-text">{{ item.progress }}%</span>
+            </div>
+          </div>
+          <span class="history-time">{{ item.last_read_at.strftime('%m-%d %H:%M') if item.last_read_at else '' }}</span>
+        </a>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state"><p>还没有阅读记录，去<a href="{{ url_for('main.index') }}">首页</a>看看吧</p></div>
+        {% endif %}
+
+      {% elif active_tab == 'favorites' %}
+        {% if favorites %}
+        <div class="doc-grid">
+          {% for fav in favorites %}
+          <a href="{{ url_for('main.doc_detail', doc_id=fav.document.id) }}" class="doc-card">
+            <div class="doc-card-header">
+              <span class="badge badge-primary">{{ fav.document.product.brand.name if fav.document.product and fav.document.product.brand else '' }}</span>
+            </div>
+            <h3 class="doc-card-title">{{ fav.document.title }}</h3>
+            <p class="doc-card-desc">{{ fav.document.description[:60] }}...</p>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state"><p>还没有收藏，阅读文档时点击收藏按钮即可保存</p></div>
+        {% endif %}
+
+      {% elif active_tab == 'comments' %}
+        {% if comments %}
+        {% for comment in comments %}
+        <div class="comment-item">
+          <div class="comment-body">
+            <div class="comment-header">
+              <a href="{{ url_for('main.doc_detail', doc_id=comment.document.id) }}" class="comment-doc-link">{{ comment.document.title }}</a>
+              <span class="comment-time">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') if comment.created_at else '' }}</span>
+            </div>
+            <div class="comment-content">{{ comment.content }}</div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state"><p>还没有评论</p></div>
+        {% endif %}
+
+      {% elif active_tab == 'posts' %}
+        {% if posts %}
+        {% for post in posts %}
+        <a href="{{ url_for('main.post_detail', post_id=post.id) }}" class="post-item">
+          <div class="post-top"><h3 class="post-title">{{ post.title }}</h3></div>
+          <div class="post-footer">
+            <span class="post-time">{{ post.created_at.strftime('%Y-%m-%d') if post.created_at else '' }}</span>
+            <div class="post-stats"><span class="post-stat">{{ post.reply_count }} 回复</span><span class="post-stat">{{ post.view_count }} 浏览</span></div>
+          </div>
+        </a>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state"><p>还没有发布帖子</p></div>
+        {% endif %}
+
+      {% elif active_tab == 'contributions' %}
+        {% if contributions %}
+        {% for c in contributions %}
+        <div class="contribution-item">
+          <span class="badge {% if c.status == 'approved' %}badge-success{% elif c.status == 'pending' %}badge-warning{% else %}badge-error{% endif %}">
+            {% if c.status == 'approved' %}已通过{% elif c.status == 'pending' %}待审核{% else %}已拒绝{% endif %}
+          </span>
+          <h3 class="contribution-title">{{ c.title }}</h3>
+          <p class="contribution-meta">{{ c.submitted_at.strftime('%Y-%m-%d') if c.submitted_at else '' }}</p>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state"><p>还没有贡献记录，<a href="{{ url_for('main.contribute') }}">去贡献</a></p></div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.profile-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 32px 0; margin-bottom: 24px; }
+.profile-info { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; }
+.profile-avatar-lg { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.profile-name { font-family: var(--font-serif); font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.profile-email { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
+.profile-bio { font-size: 13px; color: var(--text-tertiary); }
+.profile-stats { display: flex; gap: 32px; }
+.stat-item { text-align: center; }
+.stat-value { font-family: var(--font-serif); font-size: 24px; font-weight: 700; color: var(--text-primary); display: block; }
+.stat-value.text-primary { color: var(--primary); }
+.stat-label { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; display: block; }
+.profile-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+.profile-tab { padding: 10px 20px; font-size: 14px; font-weight: 500; color: var(--text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+.profile-tab:hover { color: var(--primary); text-decoration: none; }
+.profile-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.history-item { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 10px; text-decoration: none; transition: all 0.2s; }
+.history-item:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); text-decoration: none; }
+.history-info { flex: 1; min-width: 0; }
+.history-brand { font-size: 12px; color: var(--primary); font-weight: 500; margin-bottom: 4px; display: block; }
+.history-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-progress { display: flex; align-items: center; gap: 10px; }
+.history-progress-bar { flex: 1; max-width: 200px; height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden; }
+.history-progress-fill { height: 100%; background: var(--primary); border-radius: 2px; }
+.history-progress-text { font-size: 12px; color: var(--text-tertiary); }
+.history-time { font-size: 12px; color: var(--text-tertiary); flex-shrink: 0; }
+.comment-doc-link { font-size: 13px; color: var(--primary); font-weight: 500; text-decoration: none; }
+.doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.doc-card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; text-decoration: none; transition: all 0.2s; }
+.doc-card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); text-decoration: none; }
+.doc-card-header { margin-bottom: 10px; }
+.doc-card-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.doc-card-desc { font-size: 13px; color: var(--text-secondary); flex: 1; }
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text-tertiary); font-size: 14px; }
+.empty-state a { color: var(--primary); }
+</style>
+{% endblock %}

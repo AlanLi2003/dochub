@@ -1,0 +1,36 @@
+# DocHub systemd 服务单元
+# 放置路径：/etc/systemd/system/dochub.service
+# 启用：
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now dochub
+# 查看日志：journalctl -u dochub -f
+
+[Unit]
+Description=DocHub Flask app (gunicorn)
+After=network.target
+
+[Service]
+# 按实际部署用户与路径修改
+User=dochub
+Group=dochub
+WorkingDirectory=/opt/dochub
+# 生产环境变量（SECRET_KEY 必须改为强随机值；可用 python3 -c "import secrets;print(secrets.token_hex(32))" 生成）
+Environment=APP_ENV=production
+Environment=SECRET_KEY=replace-with-strong-random-secret
+Environment=FLASK_DEBUG=0
+# 如使用非 SQLite 数据库，再设置 DATABASE_URL
+
+# gunicorn：4 worker、绑定本机 8000，由 nginx 反代；绝不直接暴露公网
+ExecStart=/opt/dochub/.venv/bin/gunicorn \
+    --workers 4 \
+    --bind 127.0.0.1:8000 \
+    --access-logfile - \
+    --error-logfile - \
+    --timeout 60 \
+    wsgi:app
+
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

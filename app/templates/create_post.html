@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}发布帖子 | DocHub社区{% endblock %}
+{% block content %}
+<div class="container" style="max-width:700px;">
+  <h1 class="page-title">发布帖子</h1>
+  <div class="contribute-form-card">
+    <form method="post" action="{{ url_for('main.create_post') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label class="form-label">板块 <span class="required">*</span></label>
+        <select class="form-select" name="board" required>
+          <option value="qa">产品问答</option>
+          <option value="tips">使用技巧</option>
+          <option value="help">故障求助</option>
+          <option value="feedback">建议反馈</option>
+          <option value="chat">闲聊灌水</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">关联产品
+          <span class="form-hint">选择目标产品后，问答将出现在该产品的社区问答中，便于针对性检索</span>
+        </label>
+        <select class="form-select" name="product_id" id="productSelect">
+          <option value="">不关联具体产品</option>
+          {% for brand_name, brand_products in products|groupby('brand.name') %}
+          <optgroup label="{{ brand_name or '其他' }}">
+            {% for product in brand_products %}
+            <option value="{{ product.id }}"
+                    {% if preselect_product == product.id %}selected{% endif %}>
+              {{ product.name }}
+            </option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" id="docSelectGroup" hidden>
+        <label class="form-label">关联文档 <span class="form-hint">可选，精确到该产品下的某篇官方文档</span></label>
+        <select class="form-select" name="related_document_id" id="docSelect">
+          <option value="">不关联具体文档</option>
+          {% for doc in product_docs %}
+          <option value="{{ doc.id }}" {% if preselect_doc == doc.id %}selected{% endif %}>{{ doc.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">标题 <span class="required">*</span></label>
+        <input type="text" class="form-input" name="title" placeholder="请输入帖子标题，建议包含产品名与问题点" required maxlength="200">
+      </div>
+      <div class="form-group">
+        <label class="form-label">内容 <span class="required">*</span></label>
+        <textarea class="form-textarea" name="content" rows="8" placeholder="详细描述你的问题或分享你的经验…" required></textarea>
+      </div>
+      <div class="form-actions">
+        <a href="{{ url_for('main.community') }}" class="btn btn-outline">取消</a>
+        <button type="submit" class="btn btn-primary">发布</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_css %}
+<style>
+.page-title { font-family: var(--font-serif); font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 20px; }
+.contribute-form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px 32px; box-shadow: var(--shadow-sm); }
+.form-hint { font-size: 12px; font-weight: 400; color: var(--text-tertiary); margin-left: 6px; }
+.form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-light); }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const productSel = document.getElementById('productSelect');
+  const docGroup = document.getElementById('docSelectGroup');
+  const docSel = document.getElementById('docSelect');
+  const preselectDoc = {{ preselect_doc if preselect_doc else 'null' }};
+
+  async function loadDocs(productId, keepDocId) {
+    docSel.innerHTML = '<option value="">不关联具体文档</option>';
+    if (!productId) { docGroup.hidden = true; return; }
+    docGroup.hidden = false;
+    try {
+      const resp = await fetch('/api/product/' + productId + '/docs');
+      const data = await resp.json();
+      (data.docs || []).forEach(function (d) {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = '[' + d.doc_type_label + '] ' + d.title;
+        if (keepDocId && String(keepDocId) === String(d.id)) opt.selected = true;
+        docSel.appendChild(opt);
+      });
+    } catch (e) { /* 级联失败不阻塞发帖 */ }
+  }
+
+  productSel.addEventListener('change', function () { loadDocs(productSel.value); });
+  if (productSel.value) loadDocs(productSel.value, preselectDoc);
+});
+</script>
+{% endblock %}

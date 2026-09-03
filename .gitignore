@@ -1,0 +1,47 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ===== 虚拟环境 =====
+.venv/
+venv/
+env/
+ENV/
+
+# ===== 实例数据 / 数据库（含用户密码哈希，禁止入库）=====
+instance/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ===== 用户上传文件 =====
+app/static/uploads/
+!app/static/uploads/.gitkeep
+
+# ===== 密钥与环境变量 =====
+.env
+.env.*
+*.pem
+*.key
+secrets/
+
+# ===== IDE / 系统 =====
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# ===== 日志 / 临时 =====
+*.log
+.cache/
+.pytest_cache/
