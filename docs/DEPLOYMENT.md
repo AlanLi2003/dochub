@@ -38,10 +38,10 @@
 ### A1. 拉取代码并准备环境
 
 ```bash
-# 1) 拉取代码（把 <你的仓库> 换成 GitHub 仓库地址）
+# 1) 拉取代码
 sudo useradd -r -m -d /opt/dochub dochub || true
 sudo mkdir -p /opt/dochub
-sudo git clone <你的GitHub仓库URL> /opt/dochub
+sudo git clone https://github.com/AlanLi2003/dochub-app.git /opt/dochub
 sudo chown -R dochub:dochub /opt/dochub
 
 # 2) 建虚拟环境并安装依赖（以 dochub 用户）
